@@ -23,9 +23,10 @@ Google Colab 公式コンテナ（`us-docker.pkg.dev/colab-images/public/runtime
 
 ---
 
-## 前提条件
+## 前提条件・動作確認済み環境
 
-- **ホスト環境**: Windows 11 on ARM + NVIDIA RTX Spark (N1X) 対応最新ドライバ
+### 前提条件
+- **ホスト環境**: Windows 11 on ARM + NVIDIA RTX Spark (N1X) 対応ドライバ
 - **Docker Desktop for Windows**: インストール済み、かつ **Settings → Resources → WSL Integration** で対象の WSL2 ディストリビューション（Ubuntu 等）を有効化済み
 - WSL2 上で以下が動作すること:
   ```bash
@@ -33,6 +34,13 @@ Google Colab 公式コンテナ（`us-docker.pkg.dev/colab-images/public/runtime
   docker version
   ```
   > ※ `docker` 実行時に `permission denied ... /var/run/docker.sock` が出る場合は、WSL2 ターミナルを再起動するか `newgrp docker` を実行してください。
+
+### 動作確認済み環境
+- **GPU**: NVIDIA RTX Spark N1X (Blackwell / Compute Capability `12.1` / `sm_121`)
+- **ドライバ / CUDA**: NVIDIA Driver `620.x` / CUDA `13.5`
+- **OS / Docker**: Windows 11 on ARM + WSL2 Ubuntu 24.04 (`aarch64`) + Docker Desktop `4.100.x`
+
+> **他バージョン環境での利用**: デフォルトの `BASE_IMAGE`（`nvcr.io/nvidia/pytorch:26.11-py3`）は CUDA 13.5 ベースです。ホスト側ドライバが旧バージョンの場合は、`.env` で `BASE_IMAGE` を対応する `nvcr.io/nvidia/pytorch:26.xx-py3` または `25.xx-py3` タグへ変更してビルドしてください。
 
 ---
 
@@ -160,5 +168,15 @@ swap=16GB
 │   ├── colab_kernel_launcher.py     # ZMQ iopub HWM=0 カスタムカーネルランチャー
 │   ├── patch_colabtools.py          # IPython 9.x / 空カーネル時の互換パッチ
 │   └── selfcheck.py                 # GPU / PyTorch / 拡張の自動検証スクリプト
+├── LICENSE                          # Apache License 2.0
 └── workspace/                       # /content にマウントされる作業ディレクトリ
 ```
+
+---
+
+## ライセンス・免責事項
+
+- 本リポジトリのファイルは [Apache License 2.0](LICENSE) のもとで公開しています。
+- 本リポジトリは Google および NVIDIA とは無関係の非公式プロジェクトです。
+- ビルド時に参照するベースイメージ（`nvcr.io/nvidia/pytorch`）および含まれるソフトウェアは、NVIDIA のソフトウェア利用規約（NVIDIA Software License Agreement / Deep Learning Container License）に従います。ビルド済みイメージを再配布せず、各利用者の環境で `Dockerfile` からビルドしてご利用ください。
+- `google-colab` 拡張機能は Apache License 2.0 で公開されている [googlecolab/colabtools](https://github.com/googlecolab/colabtools) をビルド時に取得して利用しています。
