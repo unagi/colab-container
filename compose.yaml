@@ -1,0 +1,44 @@
+services:
+  colab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-nvcr.io/nvidia/pytorch:26.11-py3}
+    image: colab-rtx-spark:latest
+    container_name: colab-rtx-spark
+    ports:
+      - "127.0.0.1:${COLAB_PORT:-9000}:8080"
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    environment:
+      COLAB_PORT: ${COLAB_PORT:-9000}
+      COLAB_TOKEN: ${COLAB_TOKEN:-}
+      COLAB_JUPYTER_ALLOW_ORIGIN_PAT: ${COLAB_JUPYTER_ALLOW_ORIGIN_PAT:-^https://colab\.(sandbox|research)\.google\.com$}
+      TZ: ${TZ:-Asia/Tokyo}
+    volumes:
+      - ${COLAB_WORKSPACE:-./workspace}:/content
+      - colab-hf-cache:/root/.cache/huggingface
+      - colab-torch-cache:/root/.cache/torch
+      - colab-pip-cache:/root/.cache/pip
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  colab-hf-cache:
+  colab-torch-cache:
+  colab-pip-cache:
