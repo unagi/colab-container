@@ -3,6 +3,7 @@
 
 import importlib.metadata as md
 from pathlib import Path
+import shutil
 import sys
 import time
 
@@ -77,11 +78,27 @@ def main() -> int:
         found = [f"{p}=={md.version(p)}" for p in pkgs]
         return ", ".join(found)
 
+    def check_workspace_mount():
+        fstype = "unknown"
+        for line in Path("/proc/mounts").read_text(encoding="utf-8").splitlines():
+            parts = line.split()
+            if len(parts) >= 3 and parts[1] == "/content":
+                fstype = parts[2]
+        usage = shutil.disk_usage("/content")
+        free_gib = usage.free / (1024**3)
+        total_gib = usage.total / (1024**3)
+        assert fstype != "tmpfs", (
+            f"/content is mounted on tmpfs ({free_gib:.1f}GiB free). "
+            "WSL2 bind-mount race detected; run `make down && make up` from WSL2."
+        )
+        return f"fstype={fstype}, free={free_gib:.1f}GiB/{total_gib:.1f}GiB"
+
     ok &= check("PyTorch & CUDA GPU", check_torch_cuda)
     ok &= check("NGC Package Constraints", check_constraints)
     ok &= check("Colab Server Extension & GPU Monitor", check_colab_extension)
     ok &= check("Colab IPython Extension", check_ipython_extension)
     ok &= check("Core Packages", check_packages)
+    ok &= check("Workspace Mount (/content)", check_workspace_mount)
 
     return 0 if ok else 1
 

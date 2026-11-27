@@ -36,7 +36,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-    restart: unless-stopped
+    # Avoid Docker Desktop auto-restarting before WSL2 bind mounts are ready
+    # (which can leave /content mounted on a small tmpfs instead of ./workspace).
+    restart: "no"
 
 volumes:
   colab-hf-cache:

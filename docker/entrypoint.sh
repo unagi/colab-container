@@ -21,6 +21,12 @@ URL="http://127.0.0.1:${HOST_PORT}/?token=${TOKEN}"
 printf '%s\n' "${URL}" > /tmp/colab_connect_url
 chmod 600 /tmp/colab_connect_url
 
+CONTENT_FSTYPE="$(awk '$2 == "/content" { fs = $3 } END { print fs }' /proc/mounts 2>/dev/null || true)"
+CONTENT_WARN=""
+if [[ "${CONTENT_FSTYPE}" == "tmpfs" ]]; then
+  CONTENT_WARN="WARNING: /content is mounted on tmpfs (WSL2 bind-mount race). Run: make down && make up"
+fi
+
 cat <<EOF
 ======================================================================
  Google Colab Local Runtime (NVIDIA RTX Spark / ARM64)
@@ -33,6 +39,9 @@ cat <<EOF
    Connect -> Connect to a local runtime
 ======================================================================
 EOF
+if [[ -n "${CONTENT_WARN}" ]]; then
+  printf '\n[!] %s\n\n' "${CONTENT_WARN}" >&2
+fi
 
 exec jupyter server \
   --config=/etc/jupyter/jupyter_server_config.py \
