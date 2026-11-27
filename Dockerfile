@@ -43,8 +43,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && git lfs install --system \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Lock NVIDIA-optimized core packages in /etc/pip/constraint.txt so neither
-#    build-time installs nor `!pip install` / `!uv pip install` inside Colab
+# 2. Build torchaudio from source against the pre-installed NGC PyTorch (ARM64 / CUDA 13.5 / sm_121)
+#    so Colab notebooks expecting the torch + torchvision + torchaudio trio work out of the box.
+ARG TORCHAUDIO_REF=efaadd2ab0a31d871c9bb6b05262e302d07d4fe8
+RUN git clone --filter=blob:none https://github.com/pytorch/audio.git /tmp/torchaudio && \
+    git -C /tmp/torchaudio checkout "${TORCHAUDIO_REF}" && \
+    USE_CUDA=1 TORCH_CUDA_ARCH_LIST="12.0;12.1+PTX" \
+      pip install --no-cache-dir --no-deps --no-build-isolation /tmp/torchaudio && \
+    rm -rf /tmp/torchaudio
+
+# 3. Lock NVIDIA-optimized core packages (and our NGC-built torchaudio) in /etc/pip/constraint.txt
+#    so neither build-time installs nor `!pip install` / `!uv pip install` inside Colab
 #    can accidentally overwrite the ARM64 CUDA 13.5 / sm_121 builds.
 RUN python3 - <<'PY'
 import importlib.metadata as md
@@ -53,6 +62,7 @@ from pathlib import Path
 protected = [
     "torch",
     "torchvision",
+    "torchaudio",
     "torch-tensorrt",
     "torchao",
     "torchtitan",
@@ -74,7 +84,7 @@ Path("/etc/pip/constraint.txt").write_text("\n".join(lines) + "\n", encoding="ut
 print(Path("/etc/pip/constraint.txt").read_text(encoding="utf-8"))
 PY
 
-# 3. Install Colab Core, general data-science, and stable PyTorch/HF foundation packages (respecting constraints).
+# 4. Install Colab Core, general data-science, and stable PyTorch/HF foundation packages (respecting constraints).
 RUN pip install --no-cache-dir \
       uv \
       google-auth \
@@ -93,9 +103,10 @@ RUN pip install --no-cache-dir \
       safetensors \
       einops \
       sentencepiece \
-      tokenizers
+      tokenizers \
+      soundfile
 
-# 4. Install google-colab (colabtools) without downgrading NGC's Jupyter/IPython/pandas,
+# 5. Install google-colab (colabtools) without downgrading NGC's Jupyter/IPython/pandas,
 #    and apply minimal compatibility patches for IPython 9.x & empty-kernel resource polling.
 ARG COLABTOOLS_REF=61495ae0074b1e0cc8a3a970f55bae59ec4b4029
 COPY docker/patch_colabtools.py /tmp/patch_colabtools.py
@@ -104,7 +115,7 @@ RUN pip install --no-cache-dir --no-deps \
     python3 /tmp/patch_colabtools.py && \
     rm -f /tmp/patch_colabtools.py
 
-# 5. Install Colab-compatible Jupyter Server, IPython, and Kernel launcher configs.
+# 6. Install Colab-compatible Jupyter Server, IPython, and Kernel launcher configs.
 COPY docker/jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
 COPY docker/ipython_config.py /etc/ipython/ipython_config.py
 COPY docker/colab_kernel_launcher.py /usr/local/lib/python3.12/dist-packages/colab_kernel_launcher.py
@@ -128,10 +139,10 @@ print(f"Updated python3 kernelspec: {spec_path}")
 print(spec_path.read_text(encoding="utf-8"))
 PY
 
-# 6. Prepare Colab-standard working directory (/content) and verify extensions at build time.
+# 7. Prepare Colab-standard working directory (/content) and verify extensions at build time.
 RUN mkdir -p /content /root/.cache/huggingface /root/.cache/torch /root/.cache/pip /root/.cache/uv /root/.cache/nv && \
     jupyter server extension list && \
-    python3 -c "import torch, google.colab, google.colab._serverextension; print('Build sanity OK:', torch.__version__)"
+    python3 -c "import torch, torchvision, torchaudio, google.colab, google.colab._serverextension; print('Build sanity OK:', torch.__version__, torchvision.__version__, torchaudio.__version__)"
 
 WORKDIR /content
 EXPOSE 8080

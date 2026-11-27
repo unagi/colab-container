@@ -23,6 +23,8 @@ def main() -> int:
 
     def check_torch_cuda():
         import torch
+        import torchaudio
+        import torchvision
 
         assert torch.cuda.is_available(), "torch.cuda.is_available() is False"
         name = torch.cuda.get_device_name(0)
@@ -36,8 +38,12 @@ def main() -> int:
         torch.cuda.synchronize()
         ms = (time.perf_counter() - t0) * 1000
         assert not torch.isnan(c).any(), "NaN in GPU matmul"
+        wav = torch.randn(1, 16000, device="cuda")
+        mel = torchaudio.transforms.MelSpectrogram(sample_rate=16000, n_mels=64).to("cuda")(wav)
+        assert mel.ndim == 3 and not torch.isnan(mel).any(), "Invalid torchaudio GPU mel output"
         return (
-            f"torch={torch.__version__}, cuda={torch.version.cuda}, "
+            f"torch={torch.__version__}, torchvision={torchvision.__version__}, "
+            f"torchaudio={torchaudio.__version__}, cuda={torch.version.cuda}, "
             f"device={name}, cap={cap}, vram={vram_gib:.2f}GiB, bf16_2048={ms:.1f}ms"
         )
 
@@ -99,6 +105,7 @@ def main() -> int:
             "einops",
             "sentencepiece",
             "tokenizers",
+            "soundfile",
         ]
         found = [f"{p}=={md.version(p)}" for p in pkgs]
         return ", ".join(found)

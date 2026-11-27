@@ -15,7 +15,7 @@ Google Colab 公式コンテナ（`us-docker.pkg.dev/colab-images/public/runtime
   - `ColabKernelApp`（ZMQ iopub HWM=0）・`iopub_data_rate_limit=1e10`・`matplotlib inline`・`debugpy`・`ipywidgets` / `anywidget` を構成済み
   - `https://colab.research.google.com` からの CORS および Private Network Access (PNA) に対応
 - **NVIDIA 最適化ビルドの保護**:
-  - ビルド時に `torch` / `torchvision` / `numpy` 等のバージョンを `/etc/pip/constraint.txt`（および `UV_CONSTRAINT`）に固定
+  - ビルド時に `torchaudio` を NGC PyTorch 向けにソースビルドして同梱し、`torch` / `torchvision` / `torchaudio` / `numpy` 等のバージョンを `/etc/pip/constraint.txt`（および `UV_CONSTRAINT`）に固定
   - ノートブック上で `!pip install` や `!uv pip install` を実行しても、誤って PyPI 版で NVIDIA 最適化 `torch` が上書き破壊されるのを防止
 - **永続化 & セキュリティ**:
   - 作業ファイル（`./workspace:/content`）および Hugging Face / PyTorch / pip / uv / CUDA JIT キャッシュ（上限 2 GiB）をボリューム永続化
