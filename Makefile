@@ -1,4 +1,4 @@
-.PHONY: build up down restart logs url check shell clean
+.PHONY: build up down restart reset logs url check shell clean
 
 build:
 	docker compose build
@@ -6,6 +6,15 @@ build:
 up:
 	mkdir -p workspace
 	docker compose up -d --build
+	@$(MAKE) --no-print-directory _wait-url
+
+reset:
+	docker compose down
+	mkdir -p workspace
+	docker compose up -d
+	@$(MAKE) --no-print-directory _wait-url
+
+_wait-url:
 	@echo "Waiting for Colab runtime to start..."
 	@for i in $$(seq 1 30); do \
 		if docker compose exec -T colab test -f /tmp/colab_connect_url 2>/dev/null; then \

@@ -18,7 +18,8 @@ Google Colab 公式コンテナ（`us-docker.pkg.dev/colab-images/public/runtime
   - ビルド時に `torch` / `torchvision` / `numpy` 等のバージョンを `/etc/pip/constraint.txt`（および `UV_CONSTRAINT`）に固定
   - ノートブック上で `!pip install` や `!uv pip install` を実行しても、誤って PyPI 版で NVIDIA 最適化 `torch` が上書き破壊されるのを防止
 - **永続化 & セキュリティ**:
-  - 作業ファイル（`./workspace:/content`）および Hugging Face / PyTorch / pip キャッシュをボリューム永続化
+  - 作業ファイル（`./workspace:/content`）および Hugging Face / PyTorch / pip / uv / CUDA JIT キャッシュ（上限 2 GiB）をボリューム永続化
+  - `make reset` でキャッシュと `./workspace` を保持したままコンテナだけクリーンに再作成可能（Colab のランタイム削除相当）
   - ポートは `127.0.0.1` のみに限定バインドし、起動ごとにランダムな認証トークンを発行（任意で固定も可能）
 
 ---
@@ -91,6 +92,7 @@ make check
 | `make logs` | コンテナのログをリアルタイム表示 |
 | `make shell` | 稼働中コンテナ内で `bash` を開く |
 | `make restart` | コンテナを再起動（`COLAB_TOKEN` 未設定時はトークン再生成） |
+| `make reset` | コンテナを破棄・再作成して導入済みパッケージを初期化（`./workspace` とキャッシュは保持） |
 | `make down` | コンテナを停止・削除（`./workspace` とキャッシュボリュームは保持） |
 | `make build` | イメージのみ再ビルド |
 | `make clean` | コンテナとローカルビルド済みイメージを削除 |

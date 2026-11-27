@@ -23,6 +23,8 @@ services:
       - colab-hf-cache:/root/.cache/huggingface
       - colab-torch-cache:/root/.cache/torch
       - colab-pip-cache:/root/.cache/pip
+      - colab-uv-cache:/root/.cache/uv
+      - colab-nv-cache:/root/.cache/nv
     deploy:
       resources:
         reservations:
@@ -44,3 +46,5 @@ volumes:
   colab-hf-cache:
   colab-torch-cache:
   colab-pip-cache:
+  colab-uv-cache:
+  colab-nv-cache:

@@ -20,9 +20,30 @@ ENV DEBIAN_FRONTEND=noninteractive \
     COLAB_REPORT_USAGE_PATHS=/:/content \
     HF_HOME=/root/.cache/huggingface \
     TORCH_HOME=/root/.cache/torch \
+    UV_CACHE_DIR=/root/.cache/uv \
+    CUDA_CACHE_PATH=/root/.cache/nv \
+    CUDA_CACHE_MAXSIZE=2147483648 \
     JUPYTER_PORT=8080
 
-# 1. Lock NVIDIA-optimized core packages in /etc/pip/constraint.txt so neither
+# 1. Install Colab-standard CLI, multimedia, archive, and build utilities.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ffmpeg \
+      git \
+      git-lfs \
+      aria2 \
+      sox \
+      unzip \
+      zstd \
+      pigz \
+      ccache \
+      ninja-build \
+      libgl1 \
+      libegl1 \
+      libglib2.0-0t64 \
+    && git lfs install --system \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Lock NVIDIA-optimized core packages in /etc/pip/constraint.txt so neither
 #    build-time installs nor `!pip install` / `!uv pip install` inside Colab
 #    can accidentally overwrite the ARM64 CUDA 13.5 / sm_121 builds.
 RUN python3 - <<'PY'
@@ -53,7 +74,7 @@ Path("/etc/pip/constraint.txt").write_text("\n".join(lines) + "\n", encoding="ut
 print(Path("/etc/pip/constraint.txt").read_text(encoding="utf-8"))
 PY
 
-# 2. Install Colab Core + Ph.1 general data-science packages (respecting constraints).
+# 3. Install Colab Core, general data-science, and stable PyTorch/HF foundation packages (respecting constraints).
 RUN pip install --no-cache-dir \
       uv \
       google-auth \
@@ -65,9 +86,16 @@ RUN pip install --no-cache-dir \
       opencv-python-headless \
       plotly \
       gdown \
-      beautifulsoup4
+      beautifulsoup4 \
+      huggingface-hub \
+      hf-xet \
+      hf-transfer \
+      safetensors \
+      einops \
+      sentencepiece \
+      tokenizers
 
-# 3. Install google-colab (colabtools) without downgrading NGC's Jupyter/IPython/pandas,
+# 4. Install google-colab (colabtools) without downgrading NGC's Jupyter/IPython/pandas,
 #    and apply minimal compatibility patches for IPython 9.x & empty-kernel resource polling.
 ARG COLABTOOLS_REF=61495ae0074b1e0cc8a3a970f55bae59ec4b4029
 COPY docker/patch_colabtools.py /tmp/patch_colabtools.py
@@ -76,7 +104,7 @@ RUN pip install --no-cache-dir --no-deps \
     python3 /tmp/patch_colabtools.py && \
     rm -f /tmp/patch_colabtools.py
 
-# 4. Install Colab-compatible Jupyter Server, IPython, and Kernel launcher configs.
+# 5. Install Colab-compatible Jupyter Server, IPython, and Kernel launcher configs.
 COPY docker/jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
 COPY docker/ipython_config.py /etc/ipython/ipython_config.py
 COPY docker/colab_kernel_launcher.py /usr/local/lib/python3.12/dist-packages/colab_kernel_launcher.py
@@ -100,8 +128,8 @@ print(f"Updated python3 kernelspec: {spec_path}")
 print(spec_path.read_text(encoding="utf-8"))
 PY
 
-# 5. Prepare Colab-standard working directory (/content) and verify extensions at build time.
-RUN mkdir -p /content /root/.cache/huggingface /root/.cache/torch /root/.cache/pip && \
+# 6. Prepare Colab-standard working directory (/content) and verify extensions at build time.
+RUN mkdir -p /content /root/.cache/huggingface /root/.cache/torch /root/.cache/pip /root/.cache/uv /root/.cache/nv && \
     jupyter server extension list && \
     python3 -c "import torch, google.colab, google.colab._serverextension; print('Build sanity OK:', torch.__version__)"
 

@@ -64,6 +64,24 @@ def main() -> int:
         google.colab.load_ipython_extension(ip)
         return "google.colab IPython extension loaded"
 
+    def check_cli_tools():
+        tools = [
+            "git",
+            "git-lfs",
+            "ffmpeg",
+            "ffprobe",
+            "aria2c",
+            "sox",
+            "unzip",
+            "zstd",
+            "pigz",
+            "ninja",
+            "ccache",
+        ]
+        missing = [t for t in tools if shutil.which(t) is None]
+        assert not missing, f"missing CLI tools: {', '.join(missing)}"
+        return ", ".join(tools)
+
     def check_packages():
         pkgs = [
             "jupyter_server",
@@ -74,6 +92,13 @@ def main() -> int:
             "plotly",
             "uv",
             "debugpy",
+            "huggingface-hub",
+            "hf-xet",
+            "hf-transfer",
+            "safetensors",
+            "einops",
+            "sentencepiece",
+            "tokenizers",
         ]
         found = [f"{p}=={md.version(p)}" for p in pkgs]
         return ", ".join(found)
@@ -97,6 +122,7 @@ def main() -> int:
     ok &= check("NGC Package Constraints", check_constraints)
     ok &= check("Colab Server Extension & GPU Monitor", check_colab_extension)
     ok &= check("Colab IPython Extension", check_ipython_extension)
+    ok &= check("Colab CLI Tools", check_cli_tools)
     ok &= check("Core Packages", check_packages)
     ok &= check("Workspace Mount (/content)", check_workspace_mount)
 
