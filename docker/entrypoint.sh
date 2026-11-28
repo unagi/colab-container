@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Clear any stale connection URL left from a previous run of this stopped container
+rm -f /tmp/colab_connect_url /tmp/colab_connect_url.tmp
+
 # Detect GPU reliably on both native Linux (/dev/nvidiactl) and WSL2 (/dev/dxg)
 if nvidia-smi >/dev/null 2>&1; then
   export COLAB_GPU=1
@@ -18,8 +21,9 @@ else
 fi
 
 URL="http://127.0.0.1:${HOST_PORT}/?token=${TOKEN}"
-printf '%s\n' "${URL}" > /tmp/colab_connect_url
-chmod 600 /tmp/colab_connect_url
+printf '%s\n' "${URL}" > /tmp/colab_connect_url.tmp
+chmod 600 /tmp/colab_connect_url.tmp
+mv -f /tmp/colab_connect_url.tmp /tmp/colab_connect_url
 
 CONTENT_FSTYPE="$(awk '$2 == "/content" { fs = $3 } END { print fs }' /proc/mounts 2>/dev/null || true)"
 CONTENT_WARN=""
